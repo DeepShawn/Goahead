@@ -12,8 +12,28 @@
 @media(max-width:820px){.shell{padding:18px 14px 20px;gap:14px}.topbar{align-items:flex-start}.topmeta{gap:10px;flex-direction:column-reverse;align-items:flex-end}.layout{grid-template-columns:1fr}.side{display:grid;grid-template-columns:1fr 1fr}.panel:last-child{grid-column:span 2}.canvas-wrap{min-height:250px}.game-foot{padding:12px 14px}}
 @media(max-width:520px){.brand h1{font-size:17px}.side{grid-template-columns:1fr}.panel:last-child{grid-column:auto}.canvas-wrap{aspect-ratio:4/3}.hint{font-size:9px;white-space:nowrap}.score{display:none}}
 </style>
+
+<style>
+/* GZJump-inspired welcome/menu layer */
+#homeOverlay{position:fixed;inset:0;z-index:20;display:flex;align-items:flex-start;padding:clamp(90px,13vh,150px) max(24px,7vw);background:linear-gradient(135deg,#c7e9de 0%,#e7f0c9 60%,#f7edb6 100%);color:#193f36;transition:opacity .28s,visibility .28s}
+#homeOverlay.is-hidden{opacity:0;visibility:hidden;pointer-events:none}
+#homeOverlay:after{content:"";position:absolute;inset:auto 0 0;height:36%;background:radial-gradient(ellipse at 50% 100%,#74ad9160 0,#9bc7ae40 42%,transparent 70%);pointer-events:none}
+.menu-panel{position:relative;z-index:1;max-width:520px}.menu-kicker{display:inline-flex;align-items:center;gap:8px;border:1px solid #355f4a2b;background:#f5f7ddaa;border-radius:999px;padding:8px 13px;font-size:10px;letter-spacing:1.5px;color:#4f806f}.menu-kicker:before{content:"";width:6px;height:6px;background:#679565;border-radius:50%}.menu-panel h2{font-size:clamp(42px,6vw,76px);line-height:1.06;letter-spacing:-3px;margin:24px 0 14px}.menu-panel h2 span{display:block;color:#3b7256}.menu-copy{font-size:14px;line-height:1.9;color:#547b6a;margin:0 0 26px;max-width:420px}.menu-actions{display:flex;gap:10px;align-items:stretch}.menu-start,.menu-help{border-radius:16px;padding:0 20px;min-height:55px;font-weight:700;font-size:14px}.menu-start{background:#245c45;color:#fbfced;box-shadow:0 8px 22px #245c4525}.menu-help{background:#ffffffa8;border:1px solid #40664b22;color:#315f4d}.menu-tip{margin-top:22px;font-size:10px;letter-spacing:.6px;color:#6b907b}.help-pop{position:fixed;inset:0;z-index:30;display:grid;place-items:center;background:#1b463a26;backdrop-filter:blur(8px)}.help-pop[hidden]{display:none}.help-card{width:min(420px,calc(100vw - 36px));background:#fcfdf5;border-radius:24px;padding:26px;color:#193f36;box-shadow:0 18px 65px #1e564222}.help-card h3{margin:0 0 14px;font-size:24px}.help-card p{font-size:12px;line-height:1.8;color:#6a826f;margin:0}.help-close{margin-top:20px;width:100%;min-height:44px;border-radius:13px;background:#e5edd8;color:#315f4d;font-weight:600}
+@media(max-width:600px){#homeOverlay{padding:76px 23px 70px;align-items:flex-end}.menu-panel h2{font-size:42px;letter-spacing:-1.5px;margin:15px 0 10px}.menu-copy{font-size:11px;line-height:1.75;margin-bottom:17px}.menu-start,.menu-help{min-height:49px;border-radius:14px;font-size:13px}.menu-tip{font-size:9px;margin-top:15px}}
+</style>
 </head>
 <body>
+
+<div id="homeOverlay" role="dialog" aria-label="开始菜单">
+  <div class="menu-panel">
+    <div class="menu-kicker">MICRO GAME / BRIDGE RUN</div>
+    <h2>搭路计划<span>Bridge Blitz</span></h2>
+    <p class="menu-copy">一块木板，一次判断。按住蓄力延长木板，松手让小人跨过深坑。</p>
+    <div class="menu-actions"><button class="menu-start" id="startGame">开始搭路 →</button><button class="menu-help" id="openHelp">怎么玩</button></div>
+    <div class="menu-tip">支持触屏、鼠标与空格键 · 2D / 3D 模式</div>
+  </div>
+</div>
+<div class="help-pop" id="helpPop" hidden><div class="help-card"><h3>三步过坑</h3><p><b>01</b> 按住画面，让木板变长。<br><b>02</b> 松手，木板会倒下。<br><b>03</b> 落在橙色平台即可进入下一关。<br><br>木板太短会掉入深坑；太长也会越过平台。</p><button class="help-close" id="closeHelp">知道了</button></div></div>
 <div class="shell">
 <header class="topbar"><div class="brand"><div class="mark"><span>+</span></div><div><div class="eyebrow">micro game / 001</div><h1>搭路计划 <span style="color:var(--muted);font-weight:400">· Bridge Blitz</span></h1></div></div><div class="topmeta"><div class="score">TOTAL <b id="totalScore">0000</b></div><div class="mode-switch"><button class="active" data-mode="2d">2D 平面</button><button data-mode="3d">3D 纵深</button></div></div></header>
 <main class="layout"><section class="game-card"><div class="game-head"><div class="level">关卡 <strong id="levelText">01 / 05</strong></div><div class="goal" id="goalText">抵达橙色平台</div></div><div class="canvas-wrap"><canvas id="gameCanvas"></canvas><div class="hint" id="hint">长按屏幕 · 延长木板 · 松手搭路</div><div class="touch-zone" id="touchZone"></div></div><div class="game-foot"><div class="status" id="status"><span>●</span> 准备出发</div><div class="progress" id="progress"></div></div></section>
@@ -39,5 +59,13 @@ function platform(x,s,w,y,kind='base'){ctx.fillStyle=kind==='next'?'#f59b42':'#d
 function person(x,y){ctx.fillStyle='#1c241d';ctx.beginPath();ctx.arc(x,y-30,11,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#1c241d';ctx.lineWidth=6;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(x,y-18);ctx.lineTo(x,y+10);ctx.moveTo(x,y-8);ctx.lineTo(x-16,y+4);ctx.moveTo(x,y-8);ctx.lineTo(x+16,y-3);ctx.moveTo(x,y+10);ctx.lineTo(x-11,y+30);ctx.moveTo(x,y+10);ctx.lineTo(x+11,y+30);ctx.stroke()}
 function decor2d(){ctx.fillStyle='#ffffff18';for(let i=0;i<12;i++){let x=(i*121+40)%W;ctx.fillRect(x,110+(i%3)*35,2,2)}}
 function draw3d(){const horizon=210,base=430;ctx.fillStyle='#7c9187';ctx.fillRect(0,horizon,W,H-horizon);ctx.fillStyle='#92a89d';ctx.beginPath();ctx.moveTo(0,horizon);ctx.lineTo(W*.35,horizon);ctx.lineTo(W,base);ctx.lineTo(0,base);ctx.closePath();ctx.fill();ctx.strokeStyle='#d4e2d3aa';ctx.lineWidth=1;for(let i=0;i<11;i++){ctx.beginPath();ctx.moveTo(W*.5,horizon);ctx.lineTo(i*100,base);ctx.stroke()}for(let y=260;y<base;y+=28){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}let p0=world.plats[0],p1=world.plats[1];const sx=0.72, x0=150,x1=520;ctx.fillStyle='#d7f36a';ctx.fillRect(x0,base-28,210,28);ctx.fillStyle='#f59b42';ctx.fillRect(x1,base-28,180,28);ctx.fillStyle='#152019';ctx.fillRect(x0+210,base-28,x1-x0-210,28);if(plank>0){ctx.fillStyle='#c99455';ctx.fillRect(x0+190,base-42,plank*.75,14)}person(x0+92,base-27)}
-zone.addEventListener('pointerdown',e=>{e.preventDefault();begin()});window.addEventListener('pointerup',release);zone.addEventListener('pointerleave',e=>{if(hold)release()});document.querySelectorAll('.mode-switch button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.mode-switch button').forEach(x=>x.classList.remove('active'));b.classList.add('active');mode=b.dataset.mode;draw()}));document.getElementById('resetBtn').onclick=reset;fit();reset();
+zone.addEventListener('pointerdown',e=>{e.preventDefault();begin()});window.addEventListener('pointerup',release);zone.addEventListener('pointerleave',e=>{if(hold)release()});document.querySelectorAll('.mode-switch button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.mode-switch button').forEach(x=>x.classList.remove('active'));b.classList.add('active');mode=b.dataset.mode;draw()}));document.getElementById('resetBtn').onclick=reset;
+// Build the world before the first draw; drawing first used to access world.plats while empty.
+reset();fit();
+const homeOverlay=document.getElementById('homeOverlay');
+document.getElementById('startGame').addEventListener('click',()=>{homeOverlay.classList.add('is-hidden');ui.status.innerHTML='<span>●</span> 准备出发';});
+const helpPop=document.getElementById('helpPop');
+document.getElementById('openHelp').addEventListener('click',()=>helpPop.hidden=false);
+document.getElementById('closeHelp').addEventListener('click',()=>helpPop.hidden=true);
+helpPop.addEventListener('click',e=>{if(e.target===helpPop)helpPop.hidden=true});
 </script></body></html>
